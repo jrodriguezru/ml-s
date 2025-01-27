@@ -38,6 +38,7 @@ jobs:
           cd ~/app
 
           # Construir y ejecutar el contenedor Docker
-          docker-compose down || true
-          docker-compose up --build -d
+          sudo docker-compose down || true
+          sudo docker build -t model_scoring --build-arg MODEL_PATH=model.pkl .  
+          sudo docker-compose up -d
         EOF

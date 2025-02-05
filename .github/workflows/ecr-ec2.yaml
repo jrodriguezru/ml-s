@@ -83,7 +83,6 @@ jobs:
           fi
             echo "✅ El servicio respondió con código 200."
 
-
       # 12 Apagar la instancia EC2 después del despliegue
       - name: Stop EC2 Instance
         run: |

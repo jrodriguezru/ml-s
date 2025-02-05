@@ -56,10 +56,10 @@ jobs:
             --targets "[{\"Key\":\"instanceIds\",\"Values\":[\"${{ secrets.EC2_INSTANCE_ID }}\"]}]" \
             --parameters 'commands=[
               "aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com",
-              "docker stop fastapi_app || true",
-              "docker rm fastapi_app || true",
-              "docker pull ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_REPOSITORY }}:latest",
-              "docker run -d -p 80:8888 --name model_scoring ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_REPOSITORY }}:latest"
+              "sudo docker stop model_scoring || true",
+              "sudo docker rm model_scoring || true",
+              "sudo docker pull ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_REPOSITORY }}:latest",
+              "sudo docker run -d -p 80:8888 --name model_scoring ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_REPOSITORY }}:latest"
             ]' \
             --region ${{ secrets.AWS_REGION }}
 

@@ -103,12 +103,24 @@ jobs:
       # 11 Comprobar que el servicio corre sin problemas comprobando respuesta 200.
       - name: Check status code 200 on curl request 
         run: |
-          STATUS_CODE=$(curl -X 'POST' 'http://$EC2_PUBLIC_IP:80/score1?data=https://github.com/jrodriguezru/ml-s/raw/refs/heads/main/data/score.csv' -H 'accept: application/json' -d '' -w "%{http_code}" -s -o /dev/null)
-          if [ "$STATUS_CODE" -ne 200 ]; then
-            echo "❌ Error: El servicio no respondió con código 200. Código recibido: $STATUS_CODE"
-            exit 1
-          fi
-            echo "✅ El servicio respondió con código 200."
+          for i in {1..10}; do
+            STATUS_CODE=$(curl -X 'POST' 'http://$EC2_PUBLIC_IP:80/score1?data=https://github.com/jrodriguezru/ml-s/raw/refs/heads/main/data/score.csv' -H 'accept: application/json' -d '' -w "%{http_code}" -s -o /dev/null) || STATUS_CODE="CURL_ERROR"
+            if [ "$STATUS_CODE" = "CURL_ERROR" ]; then
+              echo "❌ Intento $i/10: Error al hacer la solicitud (posible Exit Code 3)"
+              sleep 5
+              continue
+            fi
+            if [ "$STATUS_CODE" -ne 200 ]; then
+              echo "❌ Error Intento $i/10: El servicio no respondió con código 200. Código recibido: $STATUS_CODE"
+              sleep 5
+              continue
+            fi
+              echo "✅ El servicio respondió con código 200."
+              exit 0
+          done 
+          echo "❌ Error: El servicio nunca respondió con código 200 después de 10 intentos."
+          exit 1
+              
 
       # 12 Apagar la instancia EC2 después del despliegue
       - name: Stop EC2 Instance

@@ -48,7 +48,7 @@ jobs:
       - name: Push Docker Image to ECR
         run: docker push ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_REPOSITORY }}:latest
 
-      # 9 Conectarse a la instancia EC2 y ejecutar la nueva imagen. Comprobar que la instancia tenga los roles de SSM bien configurados.
+      # 9 Conectarse a la instancia EC2 y ejecutar la nueva imagen. Comprobar que la instancia tenga los roles de SSM bien configurados y que la instancia tenga AWS CLI instalado.
       - name: Deploy Docker Container on EC2
         run: |
           aws ssm send-command \
@@ -56,10 +56,10 @@ jobs:
             --targets "[{\"Key\":\"instanceIds\",\"Values\":[\"${{ secrets.EC2_INSTANCE_ID }}\"]}]" \
             --parameters 'commands=[
               "aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com",
-              "sudo docker stop model_scoring || true",
-              "sudo docker rm model_scoring || true",
+              "sudo docker stop scoring || true",
+              "sudo docker rm scoring || true",
               "sudo docker pull ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_REPOSITORY }}:latest",
-              "sudo docker run -d -p 80:8888 --name model_scoring ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_REPOSITORY }}:latest"
+              "sudo docker run -d -p 80:8888 --name scoring ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_REPOSITORY }}:latest"
             ]' \
             --region ${{ secrets.AWS_REGION }}
 

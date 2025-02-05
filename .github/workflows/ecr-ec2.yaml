@@ -66,6 +66,9 @@ jobs:
             --region ${{ secrets.AWS_REGION }})
 
           echo "Waiting for command execution to complete..."
+
+          # Revisar que el IAM User tenga ssm.ListCommandInvocations action permitida 
+          
           while true; do
             STATUS=$(aws ssm list-command-invocations \
               --command-id "$COMMAND_ID" \

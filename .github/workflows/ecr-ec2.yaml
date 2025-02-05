@@ -51,7 +51,7 @@ jobs:
       # 9 Conectarse a la instancia EC2 y ejecutar la nueva imagen. Comprobar que la instancia tenga los roles de SSM y acceso a ECR bien configurados y que la instancia tenga AWS CLI instalado.
       - name: Deploy Docker Container on EC2
         run: |
-          aws ssm send-command \
+          COMMAND_ID=$(aws ssm send-command \
             --document-name "AWS-RunShellScript" \
             --targets "[{\"Key\":\"instanceIds\",\"Values\":[\"${{ secrets.EC2_INSTANCE_ID }}\"]}]" \
             --parameters 'commands=[
@@ -61,8 +61,32 @@ jobs:
               "sudo docker pull ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_REPOSITORY }}:latest",
               "sudo docker run -d -p 80:8888 --name scoring ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_REPOSITORY }}:latest"
             ]' \
-            --region ${{ secrets.AWS_REGION }}
+            --query "Command.CommandId" \
+            --output text \
+            --region ${{ secrets.AWS_REGION }})
 
+          echo "Waiting for command execution to complete..."
+          while true; do
+            STATUS=$(aws ssm list-command-invocations \
+              --command-id "$COMMAND_ID" \
+              --details \
+              --query "CommandInvocations[0].Status" \
+              --output text \
+              --region $AWS_REGION)
+              
+            echo "Current status: $STATUS"
+      
+            if [[ "$STATUS" == "Success" ]]; then
+                echo "Command execution completed successfully."
+                break
+            elif [[ "$STATUS" == "Failed" || "$STATUS" == "TimedOut" ]]; then
+                echo "Command execution failed!"
+                exit 1
+            fi
+                echo "Still pending... checking again in 5 seconds."
+                sleep 5
+          done
+            
       # 10 Obtener la IP pública de la instancia de EC2 y guardarla en las variables de entorno de Github Actions
       - name: Get EC2 Public IP
         id: get_ip

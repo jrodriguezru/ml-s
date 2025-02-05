@@ -76,7 +76,7 @@ jobs:
       # 11 Comprobar que el servicio corre sin problemas comprobando respuesta 200.
       - name: Check status code 200 on curl request 
         run: |
-          STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://$EC2_PUBLIC_IP:80)
+          STATUS_CODE=$(curl -X 'POST' 'http://$EC2_PUBLIC_IP:80/score1?data=https://github.com/jrodriguezru/ml-s/raw/refs/heads/main/data/score.csv' -H 'accept: application/json' -d '' -w "%{http_code}" -s -o /dev/null)
           if [ "$STATUS_CODE" -ne 200 ]; then
             echo "❌ Error: El servicio no respondió con código 200. Código recibido: $STATUS_CODE"
             exit 1

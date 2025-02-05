@@ -48,7 +48,7 @@ jobs:
       - name: Push Docker Image to ECR
         run: docker push ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_REPOSITORY }}:latest
 
-      # 9 Conectarse a la instancia EC2 y ejecutar la nueva imagen
+      # 9 Conectarse a la instancia EC2 y ejecutar la nueva imagen. Comprobar que la instancia tenga los roles de SSM bien configurados.
       - name: Deploy Docker Container on EC2
         run: |
           aws ssm send-command \

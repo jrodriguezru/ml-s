@@ -72,7 +72,7 @@ jobs:
               --details \
               --query "CommandInvocations[0].Status" \
               --output text \
-              --region $AWS_REGION)
+              --region ${{ secrets.AWS_REGION }})
               
             echo "Current status: $STATUS"
       

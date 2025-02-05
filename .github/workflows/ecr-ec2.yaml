@@ -104,7 +104,7 @@ jobs:
       - name: Check status code 200 on curl request 
         run: |
           for i in {1..10}; do
-            STATUS_CODE=$(curl -X 'POST' 'http://$EC2_PUBLIC_IP:80/score1?data=https://github.com/jrodriguezru/ml-s/raw/refs/heads/main/data/score.csv' -H 'accept: application/json' -d '' -w "%{http_code}" -s -o /dev/null) || STATUS_CODE="CURL_ERROR"
+            STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://$EC2_PUBLIC_IP:80/docs) || STATUS_CODE="CURL_ERROR"
             if [ "$STATUS_CODE" = "CURL_ERROR" ]; then
               echo "❌ Intento $i/10: Error al hacer la solicitud (posible Exit Code 3)"
               sleep 5

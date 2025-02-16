@@ -11,7 +11,7 @@ MODEL_PATH = "model.pkl"
 try:
     with open(MODEL_PATH, "rb") as file:
         model = pickle.load(file)
-    print(f"Model loaded successfully from {MODEL_PATH}")
+    print(f"Model loaded successfully from {MODEL_PATH}!")
 except FileNotFoundError:
     raise RuntimeError(f"Model not found at {MODEL_PATH}.")
 
@@ -24,7 +24,9 @@ def score(data: str):
         return {"predictions": predictions.tolist()}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
-    
+
+
+
 # POST using a CSV file as data
 @app.post("/score2")
 def score(file: UploadFile):

@@ -1,7 +1,7 @@
 name: Deploy to AWS EC2 using ECR
 
 on:
-  push:
+  pull_request:
     branches:
       - main
 

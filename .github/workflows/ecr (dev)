@@ -1,0 +1,47 @@
+name: Build docker image, push to ECR
+
+on:
+  # Trigger the workflow on push to all branches except main.
+  push:
+    branches:    
+      - '*'         # matches every branch that doesn't contain a '/'
+      - '*/*'       # matches every branch containing a single '/'
+      - '**'        # matches every branch
+      - '!main'     # excludes main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1 Checkout Code
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # 2 Configurar AWS CLI. (Get credentials).
+      - name: Configure AWS CLI
+        run: |
+          aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws configure set region ${{ secrets.AWS_REGION }}
+
+      # 3 Obtener el ID de la cuenta de AWS, que luego es usado para hacer login en ECR
+      - name: Get AWS Account ID
+        id: aws_account
+        run: echo "AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)" >> $GITHUB_ENV
+
+      # 4 Loguearse en AWS ECR
+      - name: Authenticate Docker with ECR
+        run: aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
+
+      # 5 Construir la imagen Docker
+      - name: Build Docker Image
+        run: docker build --build-arg MODEL_PATH=model.pkl -t ${{ secrets.ECR_REPOSITORY }} .
+
+      # 6 Etiquetar la imagen Docker para AWS ECR con :lastest
+      - name: Tag Docker Image
+        run: docker tag ${{ secrets.ECR_REPOSITORY }}:latest ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_REPOSITORY }}:latest
+
+      # 7 Subir la imagen a AWS ECR
+      - name: Push Docker Image to ECR
+        run: docker push ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_REPOSITORY }}:latest

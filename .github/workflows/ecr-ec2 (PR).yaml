@@ -20,12 +20,21 @@ jobs:
           aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws configure set region ${{ secrets.AWS_REGION }}
+          
+      - name: Retrieve Secrets from AWS Secret Manager
+        run: |
+          SECRET_JSON=$(aws secretsmanager get-secret-value --secret-id rs/ml --query SecretString --output text)
+          echo "SECRET_JSON=$SECRET_JSON" >> $GITHUB_ENV
+          ECR_REPOSITORY=$(echo $SECRET_JSON | jq -r .ECR_REPOSITORY)
+          echo "ECR_REPOSITORY=$ECR_REPOSITORY" >> $GITHUB_ENV
+          EC2_INSTANCE_ID=$(echo $SECRET_JSON | jq -r .EC2_INSTANCE_ID)
+          echo "EC2_INSTANCE_ID=$EC2_INSTANCE_ID" >> $GITHUB_ENV
 
       # 3Iniciar la instancia EC2
       - name: Start EC2 Instance
         run: |
-          aws ec2 start-instances --instance-ids ${{ secrets.EC2_INSTANCE_ID }}
-          aws ec2 wait instance-running --instance-ids ${{ secrets.EC2_INSTANCE_ID }}
+          aws ec2 start-instances --instance-ids ${{ env.EC2_INSTANCE_ID }}
+          aws ec2 wait instance-running --instance-ids ${{ env.EC2_INSTANCE_ID }}
 
       # 4 Obtener el ID de la cuenta de AWS, que luego es usado para hacer login en ECR
       - name: Get AWS Account ID
@@ -38,28 +47,28 @@ jobs:
 
       # 6 Construir la imagen Docker
       - name: Build Docker Image
-        run: docker build --build-arg MODEL_PATH=model.pkl -t ${{ secrets.ECR_REPOSITORY }} .
+        run: docker build --build-arg MODEL_PATH=model.pkl -t ${{ env.ECR_REPOSITORY }} .
 
       # 7 Etiquetar la imagen Docker para AWS ECR con :lastest
       - name: Tag Docker Image
-        run: docker tag ${{ secrets.ECR_REPOSITORY }}:latest ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_REPOSITORY }}:latest
+        run: docker tag ${{ env.ECR_REPOSITORY }}:latest ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY }}:latest
 
       # 8 Subir la imagen a AWS ECR
       - name: Push Docker Image to ECR
-        run: docker push ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_REPOSITORY }}:latest
+        run: docker push ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY }}:latest
 
       # 9 Conectarse a la instancia EC2 y ejecutar la nueva imagen. Comprobar que la instancia tenga los roles de SSM y acceso a ECR bien configurados y que la instancia tenga AWS CLI instalado.
       - name: Deploy Docker Container on EC2
         run: |
           COMMAND_ID=$(aws ssm send-command \
             --document-name "AWS-RunShellScript" \
-            --targets "[{\"Key\":\"instanceIds\",\"Values\":[\"${{ secrets.EC2_INSTANCE_ID }}\"]}]" \
+            --targets "[{\"Key\":\"instanceIds\",\"Values\":[\"${{ env.EC2_INSTANCE_ID }}\"]}]" \
             --parameters 'commands=[
               "aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com",
               "sudo docker stop scoring || true",
               "sudo docker rm scoring || true",
-              "sudo docker pull ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_REPOSITORY }}:latest",
-              "sudo docker run -d -p 80:8888 --name scoring ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_REPOSITORY }}:latest"
+              "sudo docker pull ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY }}:latest",
+              "sudo docker run -d -p 80:8888 --name scoring ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY }}:latest"
             ]' \
             --query "Command.CommandId" \
             --output text \
@@ -95,7 +104,7 @@ jobs:
         id: get_ip
         run: |
           EC2_PUBLIC_IP=$(aws ec2 describe-instances \
-            --instance-ids ${{ secrets.EC2_INSTANCE_ID }} \
+            --instance-ids ${{ env.EC2_INSTANCE_ID }} \
             --query "Reservations[0].Instances[0].PublicIpAddress" \
             --output text)
           echo "EC2_PUBLIC_IP=$EC2_PUBLIC_IP" >> $GITHUB_ENV
@@ -125,5 +134,5 @@ jobs:
       # 12 Apagar la instancia EC2 después del despliegue
       - name: Stop EC2 Instance
         run: |
-          aws ec2 stop-instances --instance-ids ${{ secrets.EC2_INSTANCE_ID }}
-          aws ec2 wait instance-stopped --instance-ids ${{ secrets.EC2_INSTANCE_ID }}
+          aws ec2 stop-instances --instance-ids ${{ env.EC2_INSTANCE_ID }}
+          aws ec2 wait instance-stopped --instance-ids ${{ env.EC2_INSTANCE_ID }}
